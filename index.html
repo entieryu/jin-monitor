@@ -30,11 +30,11 @@
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
   
-  /* 전 단말기 화면 전체 채움 스크롤 방지 셋업 */
-  body { background: var(--bg-main); color: var(--text-main); font-size: 13px; line-height: 1.5; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  /* ── [핵심 수정] 웹브라우저 화면 전체를 꽉 채우는 절대 레이아웃 ── */
+  html, body { height: 100%; overflow: hidden; background: var(--bg-main); color: var(--text-main); font-size: 13px; line-height: 1.5; }
   .mono { font-family: "JetBrains Mono", monospace; }
   
-  /* ── UltraRTK 스타일 상단바 ───────────────────────── */
+  /* 상단바 */
   .topbar {
     display: flex; align-items: center; justify-content: space-between;
     height: 55px; padding: 0 20px; background: var(--navy-dark); color: #fff;
@@ -46,7 +46,7 @@
   .topbar-right { display: flex; align-items: center; gap: 15px; }
   .user-info { font-size: 12px; color: #e2e8f0; }
 
-  /* ── UltraRTK 스타일 네비게이션 서브메뉴 ──────────────── */
+  /* 네비게이션 서브메뉴 탭바 (모바일 가로 스크롤 대응) */
   .tabbar {
     display: flex; background: #fff; border-bottom: 2px solid var(--primary-blue);
     padding: 0 10px; flex-shrink: 0; z-index: 999; overflow-x: auto; white-space: nowrap;
@@ -64,21 +64,20 @@
     border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   }
 
-  /* ── 레이아웃 컨테이너 ─────────────────────────────── */
-  main { flex: 1; display: flex; flex-direction: column; min-height: 0; position: relative; }
-  .panel { display: none; height: 100%; flex-direction: column; padding: 15px; overflow-y: auto; }
-  /* 관제 화면 패널은 지도 꽉 참(전체화면) 구현을 위해 내부 패딩 제거 */
-  .panel#panel-monitor { display: none; height: 100%; width: 100%; padding: 0; overflow: hidden; }
-  .panel.active { display: flex; }
+  /* 메인 콘텐츠 영역 (상단바와 탭바를 제외한 나머지 화면을 전부 차지) */
+  main { flex: 1; height: calc(100% - 99px); display: flex; flex-direction: column; position: relative; }
+  .panel { display: none; height: 100%; width: 100%; padding: 15px; overflow: hidden; }
+  .panel.active { display: flex; flex-direction: column; animation: fadeIn 0.2s ease-in-out; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
 
   .section-title {
     font-size: 15px; font-weight: 700; color: var(--navy-dark);
-    margin-bottom: 15px; padding-left: 8px; border-left: 4px solid var(--primary-blue);
+    margin-bottom: 12px; padding-left: 8px; border-left: 4px solid var(--primary-blue);
     display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
   }
   .section-title span { font-size: 11px; color: var(--text-muted); font-weight: normal; }
 
-  /* 대시보드 컴포넌트 */
+  /* 대시보드 그리드 및 테이블 사양 */
   .grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 15px; flex-shrink: 0; }
   .stat-card {
     background: var(--bg-card); border: 1px solid var(--border-color);
@@ -90,80 +89,81 @@
   .stat-card.border-left-warning { border-left: 4px solid var(--warning); }
   .stat-card.border-left-danger { border-left: 4px solid var(--danger); }
 
-  /* ── 🗺️ 모니터링 관제 지도화면 전체화면 배치 최적화 구조 ── */
-  .layout-split { display: flex; width: 100%; height: 100%; min-height: 0; position: relative; }
-  
-  /* 필터바: 지도 위에 공중 부양식 오버레이 카드로 변경하여 지도 면적 100% 확보 */
-  .monitor-sidebar {
-    position: absolute; top: 15px; left: 15px; width: 280px; 
-    max-height: calc(100% - 30px); background: rgba(255, 255, 255, 0.95); 
-    border: 1px solid var(--border-color); border-radius: 6px; padding: 15px; 
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 1010; display: flex; flex-direction: column; transition: all 0.3s ease;
-  }
-  
   .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--border-light); border-radius: var(--radius-sm); }
   table.rtk-table { width: 100%; border-collapse: collapse; text-align: left; background: #fff; min-width: 600px; }
   table.rtk-table th { background: #f1f5f9; color: var(--navy-light); font-weight: 600; padding: 10px 12px; border: 1px solid var(--border-light); font-size: 12px; }
   table.rtk-table td { padding: 10px 12px; border: 1px solid var(--border-light); font-size: 12px; }
 
-  /* ── 반응형 전체화면 지도 엔진 사양 ── */
-  .map-container { flex: 1; width: 100%; height: 100%; position: relative; }
+  /* ── [핵심 수정] 실시간 위치 관제 화면 배치 (전체화면 특화 구조) ── */
+  .layout-split { display: flex; gap: 15px; flex: 1; height: 100%; min-height: 0; width: 100%; position: relative; }
+  
+  /* 사이드바 대시보드 패널 */
+  .side-card {
+    width: 300px; background: var(--bg-card); border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm); padding: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    display: flex; flex-direction: column; flex-shrink: 0; height: 100%;
+  }
+
+  /* [핵심 수정] 지도가 화면 전체에 자동으로 늘어나도록 설정 */
+  .map-container { position: relative; flex: 1; height: 100%; border: 1px solid var(--border-color); border-radius: var(--radius-sm); overflow: hidden; }
   .leaflet-map { width: 100%; height: 100%; background: #e5e7eb; }
   
-  /* 오른쪽 상단 플로팅 툴 바 */
-  .map-toolbar-overlay { position: absolute; top: 15px; right: 15px; z-index: 1010; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+  /* 지도 툴바 */
+  .map-toolbar-overlay { position: absolute; top: 10px; right: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
   .map-tool-btn {
-    width: 38px; height: 38px; background: #fff; border: 1px solid var(--border-color); border-radius: var(--radius-sm);
-    cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.15); transition: all 0.2s;
+    width: 36px; height: 36px; background: #fff; border: 1px solid var(--border-color); border-radius: var(--radius-sm);
+    cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.2s;
   }
   .map-tool-btn:hover { background: #f1f5f9; color: var(--primary-blue); }
   .map-tool-btn.active { background: var(--primary-blue); color: #fff; border-color: var(--primary-blue); }
 
-  .custom-layer-control { background: rgba(255, 255, 255, 0.95); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.15); width: 135px; }
+  /* 레이어 컨트롤러 */
+  .custom-layer-control { background: rgba(255, 255, 255, 0.95); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.15); width: 140px; }
   .layer-group-title { font-size: 11px; font-weight: 700; color: var(--navy-dark); margin: 6px 0 4px 0; border-bottom: 1px solid var(--border-light); padding-bottom: 2px; }
   .layer-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-main); padding: 4px 0; cursor: pointer; }
   
-  /* 모바일 화면용 필터창 접기/펼치기 전용 버튼 토글러 */
-  .sidebar-toggle-btn { display: none; }
-
   .streetview-explore-mode { cursor: crosshair !important; }
 
-  /* 폼 요소 디자인 */
-  .btn { background: var(--primary-blue); color: #fff; border: 1px solid var(--primary-blue); padding: 9px 14px; font-size: 12px; font-weight: 600; border-radius: var(--radius-sm); cursor: pointer; display: inline-flex; align-items: center; gap: 5px; min-height: 34px; }
+  /* 일반 컴포넌트 */
+  .btn { background: var(--primary-blue); color: #fff; border: 1px solid var(--primary-blue); padding: 8px 12px; font-size: 12px; font-weight: 600; border-radius: var(--radius-sm); cursor: pointer; display: inline-flex; align-items: center; gap: 5px; min-height: 34px; }
+  .btn:hover { background: var(--primary-blue-hover); }
   .btn-secondary { background: #fff; color: var(--navy-light); border: 1px solid var(--border-color); }
-  .form-group { margin-bottom: 12px; }
+  .form-group { margin-bottom: 12px; flex-shrink: 0; }
   .form-group label { display: block; font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 4px; }
   .form-control { width: 100%; padding: 8px 10px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 12px; outline: none; background: #fff; min-height: 34px; }
 
-  /* 모달 레이어 */
+  /* 스트리뷰 모달 */
   .modal-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 2000; padding: 10px; }
   .modal-window { background: #fff; border-radius: var(--radius-sm); width: 750px; max-width: 100%; box-shadow: 0 4px 15px rgba(0,0,0,0.25); display: flex; flex-direction: column; }
   .modal-header { padding: 15px; border-bottom: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; }
   .modal-body { padding: 10px; flex: 1; }
   .modal-footer { padding: 10px 15px; border-top: 1px solid var(--border-light); display: flex; justify-content: flex-end; gap: 8px; }
 
+  .badge { display: inline-block; padding: 2px 6px; font-size: 11px; font-weight: 600; border-radius: 2px; color: #fff; }
+  .bg-success { background-color: var(--success); }
+  .bg-warning { background-color: var(--warning); }
+  .bg-danger { background-color: var(--danger); }
+  .bg-primary { background-color: var(--primary-blue); }
+
   #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--navy-dark); color: #fff; padding: 10px 20px; border-radius: var(--radius-sm); font-size: 12px; z-index: 3000; opacity: 0; pointer-events: none; transition: opacity 0.25s; text-align: center; max-width: 90%; }
   #toast.show { opacity: 1; }
 
-  /* ── 📱 핵심 미디어 쿼리: 스마트폰 및 패드 기기 해상도 최적화 ── */
-  @media (max-width: 768px) {
-    /* 모바일에서는 사이드바가 지도를 가리지 않도록 하단 배치 또는 접이식 구조 적용 */
-    .monitor-sidebar {
-      top: auto; bottom: 15px; left: 15px; width: calc(100% - 30px); 
-      max-height: 180px; overflow-y: auto; padding: 10px; background: rgba(255,255,255,0.98);
-    }
-    .monitor-sidebar.collapsed { display: none; }
-    /* 모바일 접이 토글 스위치 노출 */
-    .sidebar-toggle-btn {
-      display: flex; position: absolute; bottom: 205px; left: 15px; z-index: 1010;
-      width: 110px; height: 34px; background: var(--navy-dark); color: #fff; border: none;
-      font-size: 11px; align-items: center; justify-content: center; border-radius: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); cursor: pointer;
-    }
-    .sidebar-toggle-btn.moved { bottom: 15px; }
-    .topbar { padding: 0 10px; }
-    .brand b { font-size: 14px; }
-    .brand span { display: none; }
+  /* ── 📱 모바일/태블릿 반응형 전체화면 대응 코드 ── */
+  @media (max-width: 991px) {
+    .panel { overflow-y: auto; } /* 화면이 작을때는 스크롤 허용 */
+    /* 모바일/태블릿에서는 사이드바와 지도를 상하(세로) 구조로 변경 */
+    .layout-split { flex-direction: column; display: flex; height: auto; min-height: 100%; }
+    .side-card { width: 100%; height: auto; flex-shrink: 0; }
+    /* 모바일 환경에서도 지도가 충분한 전체 화면 높이를 가지도록 강제 설정 */
+    .map-container { width: 100%; height: 70vh; min-height: 400px; }
+  }
+
+  @media (max-width: 576px) {
+    .topbar { padding: 10px; height: auto; min-height: 55px; justify-content: center; flex-direction: column; text-align: center; }
+    main { height: calc(100% - 120px); }
     .grid-container { grid-template-columns: 1fr 1fr; }
+    .map-container { height: 60vh; }
+    #streetViewFrame { height: 280px; }
   }
 </style>
 </head>
@@ -172,7 +172,7 @@
 <header class="topbar">
   <div class="brand" onclick="switchPanel('dashboard')">
     <b>JIN MONITOR</b>
-    <span>| Tractor Operations Control Console</span>
+    <span>| Tractor Control Console</span>
   </div>
   <div class="topbar-right">
     <span class="user-info"><b>최고관리자</b> 님</span>
@@ -193,7 +193,7 @@
     <div class="grid-container">
       <div class="stat-card">
         <div class="label">총 등록 트랙터</div>
-        <div class="value"><span class="editable" contenteditable="true" onblur="showToast('등록 대수가 수정되었습니다.')">12</span> 대</div>
+        <div class="value">12 대</div>
       </div>
       <div class="stat-card border-left-success">
         <div class="label">현재 가동중 장비</div>
@@ -247,12 +247,9 @@
     </div>
   </section>
 
-  <section id="panel-monitor" class="panel">
+  <section id="panel-monitor" class="panel" style="padding: 10px;">
     <div class="layout-split">
-      
-      <button class="sidebar-toggle-btn" id="sidebarToggle" onclick="toggleFilterSidebar()">⚙️ 관제필터 닫기</button>
-
-      <div class="monitor-sidebar" id="filterSidebar">
+      <div class="side-card">
         <div class="form-group">
           <label>관제 대상 구역 검색</label>
           <select class="form-control" id="areaSelect" onchange="focusLocation()">
@@ -261,16 +258,16 @@
           </select>
         </div>
         
-        <div style="margin: 3px 0 10px 0; display: flex; gap: 6px;">
-          <button class="btn" style="flex: 1; justify-content:center; padding:6px; font-size:11px;" onclick="showToast('펜스 드로우 모드 활성화')">구역 드로우</button>
-          <button class="btn btn-secondary" style="flex: 1; justify-content:center; padding:6px; font-size:11px;" onclick="showToast('단말기 맵 동기화 전송 완료')">단말 동기화</button>
+        <div style="margin: 5px 0 15px 0; display: flex; gap: 8px; flex-shrink: 0;">
+          <button class="btn" style="flex: 1; justify-content:center;" onclick="showToast('구역 펜스 드로우 모드')">구역 펜스 드로우</button>
+          <button class="btn btn-secondary" style="flex: 1; justify-content:center;" onclick="showToast('단말 맵 동기화 완료')">단말 맵 동기화</button>
         </div>
 
-        <div style="font-weight:700; margin-bottom:5px; font-size:11px; color:var(--navy-dark);">활성 트랙터 정보</div>
-        <div style="display:flex; flex-direction:column; gap:4px; overflow-y:auto; flex:1;">
-          <div style="padding:6px; border:1px solid var(--border-light); background:#f8fafc; border-radius:4px; display:flex; justify-content:space-between; align-items:center; font-size:11px;">
-            <div><strong>JM-Tractor-01</strong> (12.4 km/h)</div>
-            <span class="badge bg-success" style="font-size:9px; padding:1px 4px;">가동</span>
+        <div style="font-weight:700; margin-bottom:8px; font-size:12px; color:var(--navy-dark);">활성 트랙터 리스트</div>
+        <div style="display:flex; flex-direction:column; gap:6px; overflow-y:auto; flex:1;">
+          <div style="padding:8px; border:1px solid var(--border-light); background:#f8fafc; border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
+            <div><strong>JM-Tractor-01</strong><br><span style="color:var(--text-muted); font-size:11px;">속도: 12.4 km/h</span></div>
+            <span class="badge bg-success">가동중</span>
           </div>
         </div>
       </div>
@@ -283,10 +280,9 @@
           <button class="map-tool-btn" id="btnStreetView" onclick="toggleStreetViewMode()" title="스트리뷰 이미지 탐색">🚶</button>
           
           <div class="custom-layer-control">
-            <div class="layer-group-title">[Vworld] 브이월드</div>
+            <div class="layer-group-title">[Vworld] 브이월드 맵</div>
             <label class="layer-item"><input type="radio" name="map_layer" value="vworld_base" checked onclick="changeBaseLayer('vworld_base')"> 브이월드 일반</label>
             <label class="layer-item"><input type="radio" name="map_layer" value="vworld_sat" onclick="changeBaseLayer('vworld_sat')"> 브이월드 위성</label>
-            <label class="layer-item"><input type="radio" name="map_layer" value="vworld_hy" onclick="changeBaseLayer('vworld_hy')"> 하이브리드</label>
             
             <div class="layer-group-title">[Google] 구글 맵</div>
             <label class="layer-item"><input type="radio" name="map_layer" value="google_road" onclick="changeBaseLayer('google_road')"> 구글 로드맵</label>
@@ -294,43 +290,19 @@
           </div>
         </div>
       </div>
-
     </div>
   </section>
 
   <section id="panel-tracking" class="panel">
-    <div class="section-title">작업 이력 및 궤적 조회 <span>과거 운행 궤적 및 로깅 타임라인 추적</span></div>
+    <div class="section-title">작업 이력 및 궤적 조회</div>
     <div class="card" style="flex:1; min-height:0; overflow-y:auto;">
-      <div style="display:flex; flex-wrap: wrap; gap:10px; margin-bottom:15px; align-items:flex-end;">
-        <div class="form-group" style="margin:0; flex: 1; min-width: 140px;">
-          <label>장비 선택</label>
-          <select class="form-control"><option>JM-Tractor-01</option></select>
-        </div>
-        <div class="form-group" style="margin:0; flex: 1; min-width: 140px;">
-          <label>조회 시작일자</label>
-          <input type="date" class="form-control" value="2026-06-17">
-        </div>
-        <button class="btn" style="flex: 1; min-width: 120px; justify-content: center;" onclick="showToast('해당 일자의 작업 궤적 데이터를 로딩했습니다.')">궤적 표출</button>
-      </div>
       <div class="table-responsive">
         <table class="rtk-table">
           <thead>
-            <tr>
-              <th>작업 ID</th>
-              <th>구간 경로명</th>
-              <th>시작 시간</th>
-              <th>종료 시간</th>
-              <th>평균 RTK 상태</th>
-            </tr>
+            <tr><th>작업 ID</th><th>구간 경로명</th><th>평균 RTK 상태</th></tr>
           </thead>
           <tbody>
-            <tr>
-              <td>#TRK-20260617-01</td>
-              <td>청수리 포장 B구역 외곽 로터리 작업</td>
-              <td>09:00:11</td>
-              <td>12:30:55</td>
-              <td><span class="badge bg-success">FIXED (99.8%)</span></td>
-            </tr>
+            <tr><td>#TRK-01</td><td>청수리 포장 B구역 외곽 작업</td><td><span class="badge bg-success">FIXED (99.8%)</span></td></tr>
           </tbody>
         </table>
       </div>
@@ -338,13 +310,12 @@
   </section>
 
   <section id="panel-settings" class="panel">
-    <div class="section-title">시스템 연동 설정 <span>공공 API 맵 키 및 디바이스 인터페이스 제어</span></div>
+    <div class="section-title">시스템 연동 설정</div>
     <div class="card" style="max-width: 600px; width: 100%;">
       <div class="form-group">
-        <label>Vworld 오픈API 인증 키 (배경지도 연동용)</label>
+        <label>Vworld 오픈API 인증 키</label>
         <input type="text" class="form-control mono" value="7E492B9C-39D7-3A18-BF39-UltraRTKKey01">
       </div>
-      <button class="btn" onclick="showToast('인증 환경 설정이 안전하게 저장되었습니다.')">인증 환경 설정 저장</button>
     </div>
   </section>
 </main>
@@ -355,7 +326,7 @@
   <div class="modal-window">
     <div class="modal-header">
       <h3>🚶 구글 스트리뷰 이미지 탐색 뷰어</h3>
-      <button onclick="closeStreetView()" style="background:none; border:none; font-size:18px; cursor:pointer; padding: 5px;">✕</button>
+      <button onclick="closeStreetView()" style="background:none; border:none; font-size:18px; cursor:pointer;">✕</button>
     </div>
     <div class="modal-body">
       <div style="width:100%; background:#000; border-radius:var(--radius-sm); overflow:hidden;">
@@ -379,28 +350,12 @@
       element.classList.add('active');
     }
     
-    if(map) {
-      // 대형 스크린/모바일 기기 맵 레이아웃 찌그러짐 원천 방지용 인프라 명령
+    if(panelId === 'monitor' && map) {
+      // 중요: 지도가 렌더링될 영역의 크기를 재계산하여 리사이즈 찌그러짐 원천 방지
       setTimeout(() => { map.invalidateSize(); }, 50);
     }
   }
 
-  /* ── 모바일용 관제 필터창 토글 로직 ── */
-  function toggleFilterSidebar() {
-    const sb = document.getElementById('filterSidebar');
-    const btn = document.getElementById('sidebarToggle');
-    sb.classList.toggle('collapsed');
-    
-    if(sb.classList.contains('collapsed')) {
-      btn.innerText = "⚙️ 관제필터 열기";
-      btn.classList.add('moved');
-    } else {
-      btn.innerText = "⚙️ 관제필터 닫기";
-      btn.classList.remove('moved');
-    }
-  }
-
-  /* ── 토스트 알리미 ── */
   function showToast(msg) {
     const t = document.getElementById('toast');
     t.innerText = msg;
@@ -408,7 +363,7 @@
     setTimeout(() => { t.classList.remove('show'); }, 2500);
   }
 
-  /* ── Leaflet 지도 인프라 셋업 ── */
+  /* ── Leaflet 지도 엔진 인프라 셋업 ── */
   let map;
   let currentLayers = {};
   let myLocationMarker = null;
@@ -418,6 +373,7 @@
   const seoulCoords = [37.5665, 126.9780];
 
   document.addEventListener("DOMContentLoaded", function() {
+    // 지도 인스턴스 초기화
     map = L.map('rtkMap', {
       center: jejuCoords,
       zoom: 15,
@@ -426,10 +382,6 @@
 
     currentLayers['vworld_base'] = L.tileLayer('https://xdworld.vworld.kr/2d/Base/service/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© Vworld' });
     currentLayers['vworld_sat'] = L.tileLayer('https://xdworld.vworld.kr/2d/Satellite/service/{z}/{x}/{y}.jpeg', { maxZoom: 19, attribution: '© Vworld' });
-    currentLayers['vworld_hy'] = L.layerGroup([
-      L.tileLayer('https://xdworld.vworld.kr/2d/Satellite/service/{z}/{x}/{y}.jpeg'),
-      L.tileLayer('https://xdworld.vworld.kr/2d/Hybrid/service/{z}/{x}/{y}.png')
-    ]);
 
     currentLayers['google_road'] = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { maxZoom: 22, attribution: '© Google' });
     currentLayers['google_sat'] = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', { maxZoom: 22, attribution: '© Google' });
@@ -438,7 +390,7 @@
 
     L.marker(jejuCoords).addTo(map).bindPopup('<b>JM-Tractor-01</b><br>상태: 가동 중').openPopup();
 
-    // 단말기 해상도 및 모바일 가로/세로 회전 감지 엔진 바인딩
+    // 웹페이지 혹은 디바이스 크기가 변할 때 실시간으로 지도 크기를 자동 보정하는 엔진
     const mapDiv = document.getElementById('rtkMap');
     const resizeObserver = new ResizeObserver(() => {
       if (map) { map.invalidateSize(); }
@@ -452,7 +404,7 @@
     for (let key in currentLayers) { map.removeLayer(currentLayers[key]); }
     if(currentLayers[layerKey]) {
       currentLayers[layerKey].addTo(map);
-      showToast(layerKey.replace('_', ' ').toUpperCase() + " 레이어 전환");
+      showToast(layerKey.replace('_', ' ').toUpperCase() + " 전환 완료");
     }
   }
 
@@ -485,9 +437,9 @@
 
       myLocationMarker = L.marker([lat, lng], {icon: myIcon}).addTo(map);
       map.setView([lat, lng], 16);
-      showToast("현재 내 위치로 주행 화면을 이동했습니다.");
+      showToast("현재 내 위치로 이동했습니다.");
     }, function() {
-      showToast("위치 권한 획득 실패.");
+      showToast("위치 권한 획득에 실패했습니다.");
     }, { enableHighAccuracy: true });
   }
 
@@ -499,7 +451,7 @@
     if(isStreetViewMode) {
       btn.classList.add('active');
       mapContainer.classList.add('streetview-explore-mode');
-      showToast("스트리뷰 모드 활성화: 지도 위를 터치/클릭하세요.");
+      showToast("스트리뷰 모드 활성화: 원하는 지점을 터치하세요.");
     } else {
       btn.classList.remove('active');
       mapContainer.classList.remove('streetview-explore-mode');
